@@ -30,7 +30,7 @@ def get_pars():
     """creates parameter list"""
 
     #cons weight
-    alp = 0.5
+    alp = 0.01
 
     #prices
     r = [1] * 31
@@ -55,24 +55,59 @@ def non_obs_pp(cdat, r):
 
     return cdat
 
-def make_k(cdat, alp, r, lw):
-    """creates K for use in preference param calculation"""
+def make_psums(cdat, alp, r, lw):
+    """Sums quantities for use in preference param calculation"""
 
     #sum all preference params
     psum = cdat.filter(regex = '^p').sum(axis = 1)
 
     #get observation type param
-    pobs = cdat['p' + str(ot)]
+    pobs = cdat.apply(lambda row: 
+            row['p' + str(int(row['ot']))], axis=1)
+
+    # get consumption of observation good
+    cv = cdat.apply(lambda row: 
+            row['fc' + str(int(row['ot']))], axis=1)
+
+    # get price of observation good
+    rv = cdat.apply(lambda row: 
+            r[int(row['ot']) - 1], axis=1)
 
     #subtract the observation type from the sum
     phat = psum - pobs
 
-    import pdb; pdb.set_trace()
+    return psum, pobs, phat, rv, cv
+
 
 def obs_pp(cdat, alp, r, lw):
     """replace obs type params, currently approx for speed"""
 
-    cdat = make_k(cdat, alp, r, lw)
+    # Get parameter sums
+    psum, pobs, phat, rv, cv = make_psums(cdat, alp, r, lw)
+
+    # Product of rv and cv
+    rc = rv * cv
+
+    # Approximation
+    ft = phat * rc / (1 - rc)
+    st = - phat * rc / (1 - rc)
+    op = ft + st * alp
+    op[op < 0] = 0
+
+    # Read into consumption data
+    print('hello')
+    cdat['op'] = op
+    for i in cdat.index:
+        cdat.loc[i, 'p' + str(int(cdat.loc[i, 'ot']))] = cdat.loc[i, 'op']
+    print('goodbye')
+    
+    import pdb; pdb.set_trace()
+    #for 
+    #cdat = cdat.transform(lambda row: 
+    #        row['p' + str(int(row['ot']))] = row['op'], axis=1)
+
+    return cdat
+
 
 def get_pp(cdat, alp, r, lw):
     """gets preference parameters from cons data"""
