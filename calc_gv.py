@@ -90,7 +90,7 @@ def obs_pp(cdat, alp, r, lw):
 
     # Approximation
     ft = phat * rc / (1 - rc)
-    st = - phat * rc / (1 - rc)
+    st = - phat / (1 - rc)
     op = ft + st * alp
     op[op < 0] = 0
 
