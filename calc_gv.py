@@ -23,7 +23,7 @@ def fake_ob_types(cdat):
     main implementation"""
 
     #create random integer list
-    cdat['ot'] = np.random.random_integers(2,31,cdat.shape[0])
+    cdat['ot'] = np.random.random_integers(2,29,cdat.shape[0])
 
     return cdat
 
@@ -34,7 +34,7 @@ def get_pars():
     alp = 0.01
 
     #prices
-    r = [1] * 31
+    r = [1] * 29
 
     #w lower bar
     lw = 1000
@@ -49,7 +49,7 @@ def non_obs_pp(cdat, r):
     homefood = r[1] * cdat['fc1']
 
     #loop through consumption categories
-    for k in range(1,31):
+    for k in range(1,29):
         exp = r[k] * cdat['fc' + str(k+1)]
         p = exp / homefood
         cdat['p' + str(k + 1)] = p
@@ -97,7 +97,7 @@ def obs_pp(cdat, alp, r, lw):
 
     # Read into consumption data
     cdat['op'] = op
-    for i in range(31):
+    for i in range(29):
         cdat.loc[cdat['ot'] == i + 1, 'p' + str(i + 1)] = cdat.loc[cdat['ot'] == i + 1, 'op']
     
     return cdat
@@ -129,7 +129,5 @@ if __name__ == '__main__':
 
     #Calculate distribution parameters
     z, lm, lv = upd_pd.pref_dist(cdat)
-
-    
 
 
