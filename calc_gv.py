@@ -95,17 +95,10 @@ def obs_pp(cdat, alp, r, lw):
     op[op < 0] = 0
 
     # Read into consumption data
-    print('hello')
     cdat['op'] = op
-    for i in cdat.index:
-        cdat.loc[i, 'p' + str(int(cdat.loc[i, 'ot']))] = cdat.loc[i, 'op']
-    print('goodbye')
+    for i in range(31):
+        cdat.loc[cdat['ot'] == i + 1, 'p' + str(i + 1)] = cdat.loc[cdat['ot'] == i + 1, 'op']
     
-    import pdb; pdb.set_trace()
-    #for 
-    #cdat = cdat.transform(lambda row: 
-    #        row['p' + str(int(row['ot']))] = row['op'], axis=1)
-
     return cdat
 
 
@@ -117,6 +110,8 @@ def get_pp(cdat, alp, r, lw):
 
     #replace observation type params
     cdat = obs_pp(cdat, alp, r, lw)
+
+    return cdat
 
 if __name__ == '__main__':
     """Main program, will probably eventually move this"""
