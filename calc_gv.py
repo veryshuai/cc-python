@@ -3,6 +3,7 @@
 import pandas as pd
 import random as rand
 import numpy as np
+import upd_pd 
 
 def load_dat():
     """This function reads in data and does very simple cleaning"""
@@ -125,7 +126,10 @@ if __name__ == '__main__':
 
     #Infer preference parameters
     cdat = get_pp(cdat, alp, r, lw)
-    
 
+    #Calculate distribution parameters
+    z, lm, lv = upd_pd.pref_dist(cdat)
+
+    
 
 
