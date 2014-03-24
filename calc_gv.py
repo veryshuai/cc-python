@@ -4,6 +4,7 @@ import pandas as pd
 import random as rand
 import numpy as np
 import upd_pd 
+import new_ot
 
 def load_dat():
     """This function reads in data and does very simple cleaning"""
@@ -14,7 +15,7 @@ def load_dat():
     cdat = cdat[cdat['exptot'] >= 1000]
 
     # Drop observations with no food at home expend
-    cdat = cdat[cdat['fc1'] > 0]
+    cdat = cdat[cdat['fc1'] > 0].reset_index().drop('index',1)
 
     return cdat
 
@@ -59,21 +60,26 @@ def non_obs_pp(cdat, r):
 def make_psums(cdat, alp, r, lw):
     """Sums quantities for use in preference param calculation"""
 
+    print('1')
     #sum all preference params
     psum = cdat.filter(regex = '^p').sum(axis = 1)
 
+    print('2')
     #get observation type param
     pobs = cdat.apply(lambda row: 
             row['p' + str(int(row['ot']))], axis=1)
 
+    print('3')
     # get consumption of observation good
     cv = cdat.apply(lambda row: 
             row['fc' + str(int(row['ot']))], axis=1)
 
+    print('4')
     # get price of observation good
     rv = cdat.apply(lambda row: 
             r[int(row['ot']) - 1], axis=1)
 
+    print('5')
     #subtract the observation type from the sum
     phat = psum - pobs
 
@@ -94,11 +100,11 @@ def obs_pp(cdat, alp, r, lw):
     st = - phat / (1 - rc)
     op = ft + st * alp
     op[op < 0] = 0
-
+    
     # Read into consumption data
     cdat['op'] = op
-    for i in range(29):
-        cdat.loc[cdat['ot'] == i + 1, 'p' + str(i + 1)] = cdat.loc[cdat['ot'] == i + 1, 'op']
+    for i in range(1,29):
+        cdat.ix[cdat['ot'] == i + 1, 'p' + str(i + 1)] = list(cdat.ix[cdat['ot'] == i + 1, 'op'])
     
     return cdat
 
@@ -128,6 +134,13 @@ if __name__ == '__main__':
     cdat = get_pp(cdat, alp, r, lw)
 
     #Calculate distribution parameters
-    z, lm, lv = upd_pd.pref_dist(cdat)
+    dparams = upd_pd.pref_dist(cdat)
 
+    #Load vindex data 
+    vin = pd.read_pickle('vin_dat.pickle')
+
+    #Update observation types
+    cdat = new_ot.ot_step(cdat, vin, dparams, alp, r, lw)
+
+    import pdb; pdb.set_trace() 
 

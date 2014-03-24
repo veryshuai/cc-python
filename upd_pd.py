@@ -41,4 +41,4 @@ def pref_dist(cdat):
     # Calculate lognormal parameters
     mu, sig2 = ln_probs(cdat)
     
-    return z, mu, sig2 
+    return [z, mu, sig2]
