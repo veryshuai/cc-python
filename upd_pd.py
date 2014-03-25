@@ -7,20 +7,22 @@ import math
 def bin_probs(cdat):
     '''Calculates binomial probabilities'''
 
+    # Z is the zero probability
     z = []
-    for k in range(1,29):
+    for k in range(29):
         pname = 'p' + str(k + 1)
         frac = sum(cdat[pname] == 0) / float(len(cdat))
-        z.append(float(1) - frac)
+        z.append(frac)
 
     return pd.Series(z)
 
 def ln_probs(cdat):
     '''Calculates lognormal dist params'''
 
+    # This whole thing is just maximum likelihood, from wikipedia
     mu, sig2 = [], []
-    for k in range(1,29):
-        pname = 'p' + str(k + 1)
+    for k in range(29):
+        pname = 'p' + str(k + 1) 
         logp = cdat.loc[cdat[pname] > 0, pname].apply(math.log)
         logp_sum = logp.sum()
         logp_diffs = logp - logp_sum / float(len(logp))
@@ -41,4 +43,5 @@ def pref_dist(cdat):
     # Calculate lognormal parameters
     mu, sig2 = ln_probs(cdat)
     
-    return [z, mu, sig2]
+    # Return exp of mean, since scipy uses that
+    return [z, mu.apply(math.exp),sig2.apply(math.sqrt)]

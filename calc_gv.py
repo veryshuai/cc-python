@@ -5,6 +5,7 @@ import random as rand
 import numpy as np
 import upd_pd 
 import new_ot
+import upd_alp
 
 def load_dat():
     """This function reads in data and does very simple cleaning"""
@@ -60,37 +61,28 @@ def non_obs_pp(cdat, r):
 def make_psums(cdat, alp, r, lw):
     """Sums quantities for use in preference param calculation"""
 
-    print('1')
+    #looping through observation types
+    #this is faster than row-wise apply calls
+    rv = cdat['fc1'] * -1 
+    cv = cdat['fc1'] * -1 
+    for k in range(2,30):
+        # get consumption and price of observation good
+        addme = (cdat['ot'] == k) * (cdat['p' + str(int(k))])
+        cv = addme.add((cdat['ot'] != k) * cv)
+        rv[cdat['ot'] == k] = r[k - 1]
+
+        #kill the parameter on observation type
+        cdat['p' + str(k)] = cdat['p' + str(k)] * (cdat['ot'] != k)
+        
     #sum all preference params
-    psum = cdat.filter(regex = '^p').sum(axis = 1)
-
-    print('2')
-    #get observation type param
-    pobs = cdat.apply(lambda row: 
-            row['p' + str(int(row['ot']))], axis=1)
-
-    print('3')
-    # get consumption of observation good
-    cv = cdat.apply(lambda row: 
-            row['fc' + str(int(row['ot']))], axis=1)
-
-    print('4')
-    # get price of observation good
-    rv = cdat.apply(lambda row: 
-            r[int(row['ot']) - 1], axis=1)
-
-    print('5')
-    #subtract the observation type from the sum
-    phat = psum - pobs
-
-    return psum, pobs, phat, rv, cv
-
+    phat = cdat.filter(regex = '^p').sum(axis = 1)
+    return phat, rv, cv
 
 def obs_pp(cdat, alp, r, lw):
     """replace obs type params, currently approx for speed"""
 
     # Get parameter sums
-    psum, pobs, phat, rv, cv = make_psums(cdat, alp, r, lw)
+    phat, rv, cv = make_psums(cdat, alp, r, lw)
 
     # Product of rv and cv
     rc = rv * cv
@@ -99,12 +91,14 @@ def obs_pp(cdat, alp, r, lw):
     ft = phat * rc / (1 - rc)
     st = - phat / (1 - rc)
     op = ft + st * alp
-    op[op < 0] = 0
-    
+    op[(op < 0) | pd.isnull(op)] = 0
+
     # Read into consumption data
     cdat['op'] = op
     for i in range(1,29):
-        cdat.ix[cdat['ot'] == i + 1, 'p' + str(i + 1)] = list(cdat.ix[cdat['ot'] == i + 1, 'op'])
+        pname = 'p' + str(i + 1)
+        addme = (cdat['ot'] == i + 1) * op 
+        cdat[pname] = addme.add((cdat['ot'] != i + 1) * cdat[pname])
     
     return cdat
 
@@ -130,17 +124,29 @@ if __name__ == '__main__':
     #Get parameters
     alp, r, lw = get_pars()
 
-    #Infer preference parameters
-    cdat = get_pp(cdat, alp, r, lw)
-
-    #Calculate distribution parameters
-    dparams = upd_pd.pref_dist(cdat)
-
     #Load vindex data 
     vin = pd.read_pickle('vin_dat.pickle')
 
-    #Update observation types
-    cdat = new_ot.ot_step(cdat, vin, dparams, alp, r, lw)
+    for k in range(10):
 
-    import pdb; pdb.set_trace() 
+        # 
+        print(k)
+        print(alp)
+
+        print('params')
+        #Infer preference parameters
+        cdat = get_pp(cdat, alp, r, lw)
+
+        print('prefs')
+        #Calculate distribution parameters
+        dparams = upd_pd.pref_dist(cdat)
+
+        print('ob_types')
+        #Update observation types
+        cdat = new_ot.ot_step(cdat, vin, dparams, alp, r, lw)
+
+        print('alp')
+        #Update alpha
+        alp = upd_alp.alp_step(cdat, alp, r, lw, dparams)
+
 
