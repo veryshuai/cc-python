@@ -6,6 +6,7 @@ import numpy as np
 import upd_pd 
 import new_ot
 import upd_alp
+from copy import deepcopy
 
 def load_dat():
     """This function reads in data and does very simple cleaning"""
@@ -29,14 +30,23 @@ def fake_ob_types(cdat):
 
     return cdat
 
+def trans_expends(cdat, r):
+    '''create expenditures before estimation'''
+
+    #Assign R's to cdat based on year
+    for k in range(29):
+        cdat['exp' + str(k + 1)] = cdat.apply(lambda row: r[row['year']] * row['fc' + str(k + 1)])
+
+    return cdat
+
 def get_pars():
     """creates parameter list"""
 
     #cons weight
-    alp = 0.01
+    alp = 0.1
 
     #prices
-    r = [1] * 29
+    r = pd.read_csv('price_dat.csv').set_index('cat_name')
 
     #w lower bar
     lw = 1000
@@ -48,13 +58,17 @@ def non_obs_pp(cdat, r):
 
     #normalize by food at home
     cdat['p1'] = 1
-    homefood = r[1] * cdat['fc1']
+    cdat = cdat.apply(
+    for name, group in gbyyear:
 
-    #loop through consumption categories
-    for k in range(1,29):
-        exp = r[k] * cdat['fc' + str(k+1)]
-        p = exp / homefood
-        cdat['p' + str(k + 1)] = p
+        price = r[str(int(name))]
+        homefood = price.loc['FdH'] * group['fc1']
+
+        #loop through consumption categories
+        for k in range(1,29):
+            exp = price.iloc[k] * cdat['fc' + str(k+1)]
+            p = exp / homefood
+            group['p' + str(k + 1)] = p
 
     return cdat
 
@@ -69,7 +83,7 @@ def make_psums(cdat, alp, r, lw):
         # get consumption and price of observation good
         addme = (cdat['ot'] == k) * (cdat['p' + str(int(k))])
         cv = addme.add((cdat['ot'] != k) * cv)
-        rv[cdat['ot'] == k] = r[k - 1]
+        rv[cdat['ot'] == k] = r.iloc[k - 1, cdat['year']]
 
         #kill the parameter on observation type
         cdat['p' + str(k)] = cdat['p' + str(k)] * (cdat['ot'] != k)
@@ -124,29 +138,59 @@ if __name__ == '__main__':
     #Get parameters
     alp, r, lw = get_pars()
 
+    #Create expenditures
+    cdat trans_expends(cdat, r):
+
     #Load vindex data 
     vin = pd.read_pickle('vin_dat.pickle')
 
-    for k in range(10):
+    alp_list = []
+    lik_list = []
+    for init_ind in range(10):
+        alp = np.linspace(0, 0.5, 10)[init_ind] 
+        old_alp = 100
+        print(init_ind)
 
-        # 
-        print(k)
-        print(alp)
+        while (old_alp - alp) ** 2 > 1e-4:
 
-        print('params')
-        #Infer preference parameters
-        cdat = get_pp(cdat, alp, r, lw)
+            # Print information
+            old_alp = deepcopy(alp)
+            print(alp)
 
-        print('prefs')
-        #Calculate distribution parameters
-        dparams = upd_pd.pref_dist(cdat)
+            print('params')
+            #Infer preference parameters
+            cdat = get_pp(cdat, alp, r, lw)
 
-        print('ob_types')
-        #Update observation types
-        cdat = new_ot.ot_step(cdat, vin, dparams, alp, r, lw)
+            print('prefs')
+            #Calculate distribution parameters
+            dparams = upd_pd.pref_dist(cdat)
 
-        print('alp')
-        #Update alpha
-        alp = upd_alp.alp_step(cdat, alp, r, lw, dparams)
+            print('ob_types')
+            #Update observation types
+            cdat = new_ot.ot_step(cdat, vin, dparams, alp, r, lw)
+
+            print('params')
+            #Infer preference parameters
+            cdat = get_pp(cdat, alp, r, lw)
+
+            print('prefs')
+            #Calculate distribution parameters
+            dparams = upd_pd.pref_dist(cdat)
+
+            print('alp')
+            #Update alpha and partial lik
+            alp, lik = upd_alp.alp_step(cdat, alp, r, lw, dparams)
+        
+        alp_list.append(alp)
+        lik_list.append(lik)
+        
+        print(alp_list)
+        print(lik_list)
+
+    dat = pd.DataFrame([pd.Series(alp_list), pd.Series(lik_list)])
+    dat.to_csv('first_results.csv')
+
+
+
 
 
