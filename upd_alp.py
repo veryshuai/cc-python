@@ -21,14 +21,14 @@ def alp_lik(alp_trans, cdat, dparams, r, lw):
 
     #Update observation types
     vin = []
-    cdat = new_ot.ot_step(cdat, vin, dparams, alp, r, lw)
+    cdat = new_ot.ot_step(cdat, dparams, alp, r, lw)
 
     #update preference parameters
     cdat = calc_gv.get_pp(cdat, alp, r, lw)
 
     #get likelihood
     vin = []
-    lik = new_ot.olik(cdat, vin, dparams)
+    lik = new_ot.olik(cdat, dparams)
 
     #eliminate the really low guys
     lik = lik.apply(lambda x: max(-1e10,x))
