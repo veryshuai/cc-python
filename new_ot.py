@@ -5,6 +5,7 @@ import calc_gv
 from scipy import stats
 import numpy as np
 import math
+from multiprocessing import Pool
 
 def olik(cdat, dparams):
     '''calculates likelihood given observation type'''
@@ -30,16 +31,32 @@ def olik(cdat, dparams):
         
     return lik
 
+def obs_type_lik_loop(data_input):
+    '''loops through each observation type to get likelihoods'''
+
+    (k, cdat, dparams, alp, r, lw) = data_input
+    ot_try = pd.Series([k + 1] * len(cdat))
+    cdat['ot'] = ot_try # new observation type
+    cdat = calc_gv.get_pp(cdat, alp, r, lw) # update parameters
+    out = olik(cdat, dparams) + cdat['vin' + str(k + 1)] #add vindex
+
+    return out
+
 def ot_step(cdat, dparams, alp, r, lw):
     ''' updates observation types based on dist params'''
 
-    #Running observation type (note first group not allowed)
+    # Create tuple arguments for multiprocessing
+    data_input = []
     for k in range(1,29):
-        ot_try = pd.Series([k + 1] * len(cdat))
-        cdat['ot'] = ot_try # new observation type
-        cdat = calc_gv.get_pp(cdat, alp, r, lw) # update parameters
-        cdat['lik' + str(k + 1)] = olik(cdat, dparams) \
-                                    + cdat['vin' + str(k + 1)] #add vindex
+        data_input.append((k, cdat, dparams, alp, r, lw))
+        
+    # Call multiprocessing
+    pool = Pool(processes=4) # process per core
+    mp_out = pool.map(obs_type_lik_loop, data_input) 
+
+    # Read results into cdat
+    for k in range(1,29):
+        cdat['lik' + str(k + 1)] = mp_out[k - 1]
 
     #Find new observation types
     cdat_liks = cdat.filter(regex = '^lik') #only liks
