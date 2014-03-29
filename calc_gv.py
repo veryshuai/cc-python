@@ -152,7 +152,6 @@ def obs_pp(cdat, alp, lw):
     
     return cdat
 
-
 def get_pp(cdat, alp, r, lw):
     """gets preference parameters from cons data"""
 

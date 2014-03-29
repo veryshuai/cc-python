@@ -51,8 +51,10 @@ def ot_step(cdat, dparams, alp, r, lw):
         data_input.append((k, cdat, dparams, alp, r, lw))
         
     # Call multiprocessing
-    pool = Pool(processes=4) # process per core
+    pool = Pool(processes=3) # process per core
     mp_out = pool.map(obs_type_lik_loop, data_input) 
+    pool.close() #proper closing
+    pool.join() #proper closing
 
     # Read results into cdat
     for k in range(1,29):
