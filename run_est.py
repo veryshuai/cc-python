@@ -36,9 +36,15 @@ if __name__ == '__main__':
     # cdat = load_dat()
     # cdat.to_pickle('cdat.pickle')
     cdat = pd.read_pickle('cdat.pickle')
+    cdat_orig = deepcopy(cdat) #for use with bootstrap
 
     for k in range(runs):
     
+        #Get sample from cdat for bootstrap
+        if boot:
+            randlist = np.random.randint(0,len(cdat),len(cdat))
+            cdat = deepcopy(cdat_orig.iloc[randlist].reset_index())
+
         #Timestamp
         timestamp = datetime.datetime\
                         .fromtimestamp(time.time())\
