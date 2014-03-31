@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
             print('alp')
             #Update alpha and partial lik
-            #alp, lik = upd_alp.alp_step(cdat, alp, r, lw, dparams)
+            alp, lik = upd_alp.alp_step(cdat, alp, r, lw, dparams)
 
         #get the correct folder
         if boot:
