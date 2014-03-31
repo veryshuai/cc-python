@@ -14,10 +14,11 @@ def ask_boot():
         boot = input('Is this a bootstrap run? (y/n): ')
 
     #change boot to a boolean
+    print(boot)
     if boot == 'y':
-        boot_bool == True
+        boot_bool = True
     else:
-        boot_bool == False
+        boot_bool = False
 
     return boot_bool
 
@@ -78,7 +79,7 @@ if __name__ == '__main__':
 
             print('alp')
             #Update alpha and partial lik
-            alp, lik = upd_alp.alp_step(cdat, alp, r, lw, dparams)
+            #alp, lik = upd_alp.alp_step(cdat, alp, r, lw, dparams)
 
         #get the correct folder
         if boot:
