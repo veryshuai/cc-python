@@ -56,8 +56,7 @@ if __name__ == '__main__':
         alp = 0.4
         old_alp = 100
 
-        for k in range(1):
-        #while (old_alp - alp) ** 2 > 1e-4:
+        while (old_alp - alp) ** 2 > 1e-4:
 
             # Print information
             old_alp = deepcopy(alp)
