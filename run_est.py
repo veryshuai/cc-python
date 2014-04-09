@@ -8,6 +8,7 @@ import time
 import math
 from math import log
 import itertools
+import yappi
 
 def load_dat():
     """This function reads in data and does very simple cleaning"""
@@ -148,6 +149,7 @@ def est_loop(cdat, boot):
 
 if __name__ == '__main__':
 
+
     boot = ask_boot()
 
     #How many runs?
@@ -163,3 +165,4 @@ if __name__ == '__main__':
 
     # Run main est loop
     est_loop(cdat, boot)
+
