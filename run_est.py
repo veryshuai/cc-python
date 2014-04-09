@@ -5,6 +5,65 @@ import numpy as np
 from calc_gv import *
 import datetime
 import time
+import math
+from math import log
+import itertools
+
+def load_dat():
+    """This function reads in data and does very simple cleaning"""
+
+    cdat = pd.read_stata('exp_dat.dta')
+
+    # Drop observations with very low income
+    cdat = cdat[cdat['exptot'] >= 1000]
+
+    # Drop observations with no food at home expend
+    cdat = cdat[cdat['fc1'] > 0].reset_index().drop('index',1)
+
+    # Initialize observation types
+    cdat = fake_ob_types(cdat) 
+
+    # Derive actually consumption (not necessary currently)
+    # cdat = trans_expends(cdat, r)
+
+    # Add demographic specific vins
+    cdat = add_vins(cdat)
+
+    return cdat
+
+def make_grid(cdat):
+    '''creates grid points'''
+
+    #create min to max wealth on a log scale
+    w = np.logspace(log(cdat.exptot.min() / float(1000), 2),
+            log(cdat.exptot.max() / float(1000), 2), 10, base=2) ** -1
+    r = np.logspace(log(0.01, 2),log(0.5, 2), 10, base=2)
+
+    #create all possible tuples
+    tups = []
+    for j in w:
+        for k in r:
+            tups.append((j,k))
+
+    return tups 
+
+def fake_ob_types(cdat):
+    """creates fake observation types"""
+
+    #create random integer list
+    cdat['ot'] = np.random.random_integers(2,29,cdat.shape[0])
+
+    return cdat
+
+def trans_expends(cdat, r):
+    '''create actual consuption before estimation'''
+
+    #Assign R's to cdat based on year
+    print(r['hef_ord'])
+    for k in range(29):
+        cdat['exp' + str(k + 1)] = cdat.apply(lambda row: r.loc[r['hef_ord'] == k + 1, str(int(row['year']))]**-1 * row['fc' + str(k + 1)], axis=1)
+
+    return cdat
 
 def ask_boot():
     '''user decides if we are bootstraping or not'''
@@ -22,22 +81,10 @@ def ask_boot():
 
     return boot_bool
 
-if __name__ == '__main__':
+def main_est(cdat, boot):
+    '''main estimation loop'''
 
-    boot = ask_boot()
-
-    #How many runs?
-    if boot:
-        runs = 100 
-    else:
-        runs = 1
-
-    #Load data
-    # cdat = load_dat()
-    # cdat.to_pickle('cdat.pickle')
-    cdat = pd.read_pickle('cdat.pickle')
     cdat_orig = deepcopy(cdat) #for use with bootstrap
-
     for k in range(runs):
     
         #Get sample from cdat for bootstrap
@@ -56,7 +103,7 @@ if __name__ == '__main__':
         alp = 0.4
         old_alp = 100
 
-        while (old_alp - alp) ** 2 > 1e-4:
+        while (old_alp - alp) ** 2 > 1e-6:
 
             # Print information
             old_alp = deepcopy(alp)
@@ -85,6 +132,8 @@ if __name__ == '__main__':
             print('alp')
             #Update alpha and partial lik
             alp, lik = upd_alp.alp_step(cdat, alp, r, lw, dparams)
+            print(alp)
+            print(old_alp)
 
         #get the correct folder
         if boot:
@@ -96,3 +145,21 @@ if __name__ == '__main__':
         f = open(folder + '/alp' + timestamp + '.csv', 'w')
         f.write('{:.6f}'.format(alp))
         f.close()
+
+if __name__ == '__main__':
+
+    boot = ask_boot()
+
+    #How many runs?
+    if boot:
+        runs = 100 
+    else:
+        runs = 1
+
+    #Load data
+    cdat = load_dat()
+    # cdat.to_pickle('cdat.pickle')
+    cdat = pd.read_pickle('cdat.pickle')
+
+    # Run main est loop
+    est_loop(cdat, boot)
