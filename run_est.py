@@ -81,7 +81,7 @@ def ask_boot():
 
     return boot_bool
 
-def main_est(cdat, boot):
+def est_loop(cdat, boot):
     '''main estimation loop'''
 
     cdat_orig = deepcopy(cdat) #for use with bootstrap
@@ -100,7 +100,7 @@ def main_est(cdat, boot):
         #Get parameters
         alp, r, lw = get_pars()
 
-        alp = 0.4
+        alp = 0.1
         old_alp = 100
 
         while (old_alp - alp) ** 2 > 1e-6:
@@ -157,7 +157,7 @@ if __name__ == '__main__':
         runs = 1
 
     #Load data
-    cdat = load_dat()
+    #cdat = load_dat()
     # cdat.to_pickle('cdat.pickle')
     cdat = pd.read_pickle('cdat.pickle')
 

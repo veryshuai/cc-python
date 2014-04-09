@@ -7,6 +7,30 @@ import upd_pd
 import new_ot
 import upd_alp
 from copy import deepcopy
+import run_est
+import fit_spline
+
+def load_dat():
+    """This function reads in data and does very simple cleaning"""
+
+    cdat = pd.read_stata('exp_dat.dta')
+
+    # Drop observations with very low income
+    cdat = cdat[cdat['exptot'] >= 1000]
+
+    # Drop observations with no food at home expend
+    cdat = cdat[cdat['fc1'] > 0].reset_index().drop('index',1)
+
+    # Initialize observation types
+    cdat = fake_ob_types(cdat) 
+
+    # Derive actually consumption (not necessary currently)
+    # cdat = trans_expends(cdat, r)
+
+    # Add demographic specific vins
+    cdat = add_vins(cdat)
+
+    return cdat
 
 def select_vin(row, vin):
     '''selects correct vin for particular demographic'''
@@ -40,6 +64,25 @@ def add_vins(cdat):
     #Add demographic specific vindex
     for k in range(1,30):
         cdat['vin' + str(k)] = cdat.apply(lambda row: select_vin(row, vin[vin['hef_ord'] == k]), axis = 1)
+
+    return cdat
+
+def fake_ob_types(cdat):
+    """creates fake observation types for debugging before
+    main implementation"""
+
+    #create random integer list
+    cdat['ot'] = np.random.random_integers(2,29,cdat.shape[0])
+
+    return cdat
+
+def trans_expends(cdat, r):
+    '''create actual consuption before estimation'''
+
+    #Assign R's to cdat based on year
+    print(r['hef_ord'])
+    for k in range(29):
+        cdat['exp' + str(k + 1)] = cdat.apply(lambda row: r.loc[r['hef_ord'] == k + 1, str(int(row['year']))]**-1 * row['fc' + str(k + 1)], axis=1)
 
     return cdat
 
@@ -97,13 +140,18 @@ def obs_pp(cdat, alp, lw):
     phat, rc = make_psums(cdat, alp, lw)
 
     # Get wealth and expenditure ratios
-    w = cdat['exptot'] / lw
+    exptot = cdat['exptot']
+    w = lw / exptot
+    r = rc / exptot
 
-    # Exact solution 
-    ft = phat * rc / (1 - rc)
-    st = - phat / (1 - rc)
-    op = ft + st * alp
-    op[(op < 0) | pd.isnull(op)] = 0
+    # Fit spline
+    gp = run_est.make_grid(cdat) #should move this to save on calculation
+    spline = fit_spline.fit(gp, alp)
+
+    # Get gammas
+    gam = spline.ev(w,r) 
+    op = gam * phat
+    op[op < 0] = 0 #eliminate negative values (approximation error)
 
     # Read into consumption data
     cdat['op'] = op
