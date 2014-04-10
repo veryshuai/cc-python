@@ -45,7 +45,7 @@ def fit(gp, alp):
     # Fit Spline to solutions
     x = [k[0] for k in gp]
     y = [k[1] for k in gp]
-    spline = SmoothBivariateSpline(x,y,sols,kx=4,ky=4)
+    spline = SmoothBivariateSpline(x,y,sols,kx=5,ky=5)
 
     return spline
 

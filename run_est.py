@@ -37,8 +37,8 @@ def make_grid(cdat):
 
     #create min to max wealth on a log scale
     w = np.logspace(log(cdat.exptot.min() / float(1000), 2),
-            log(cdat.exptot.max() / float(1000), 2), 10, base=2) ** -1
-    r = np.logspace(log(0.01, 2),log(0.5, 2), 10, base=2)
+            log(cdat.exptot.max() / float(1000), 2), 50, base=2) ** -1
+    r = np.logspace(log(0.01, 2),log(0.5, 2), 50, base=2)
 
     #create all possible tuples
     tups = []
@@ -101,10 +101,10 @@ def est_loop(cdat, boot):
         #Get parameters
         alp, r, lw = get_pars()
 
-        alp = 0.1
+        alp = 0.4
         old_alp = 100
 
-        while (old_alp - alp) ** 2 > 1e-6:
+        while (old_alp - alp) ** 2 > 1e-9:
 
             # Print information
             old_alp = deepcopy(alp)

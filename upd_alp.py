@@ -9,7 +9,6 @@ from scipy import stats
 import numpy as np
 import new_ot
 import upd_pd
-import yappi
 
 def alp_lik(alp_trans, cdat, dparams, r, lw):
     '''objective function for minimizing alp'''
