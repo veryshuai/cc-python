@@ -72,7 +72,7 @@ def fake_ob_types(cdat):
     main implementation"""
 
     #create random integer list
-    cdat['ot'] = np.random.random_integers(2,29,cdat.shape[0])
+    cdat['ot'] = np.random.random_integers(1,29,cdat.shape[0])
 
     return cdat
 
@@ -119,9 +119,9 @@ def non_obs_pp(cdat):
 def make_psums(cdat, alp, lw):
     """Sums quantities for use in preference param calculation"""
 
-    # get expenditure on oservation good
+    # get expenditure on observation good
     ev = cdat['fc1'] * -1 #create arbitrary ev series
-    for k in range(2,30):
+    for k in range(1,30):
         addme = (cdat['ot'] == k)\
                 * (cdat['fc' + str(int(k))]) #writes type k ev
         ev = addme.add((cdat['ot'] != k) * ev) #preserves old ev's
@@ -151,6 +151,7 @@ def obs_pp(cdat, alp, lw):
     # Get gammas
     gam = spline.ev(w,r) 
     op = gam * phat
+    op[cdat['ot'] == 1] = 1 #in case of observation type food at home
     op[op < 0] = 0 #eliminate negative values (approximation error)
 
     # Read into consumption data
@@ -159,6 +160,11 @@ def obs_pp(cdat, alp, lw):
         pname = 'p' + str(i + 1)
         addme = (cdat['ot'] == i + 1) * op 
         cdat[pname] = addme.add((cdat['ot'] != i + 1) * cdat[pname])
+
+    cond = cdat['ot'] == 1
+    for i in range(1,29):
+        pname = 'p' + str(i + 1)
+        cdat.ix[cond, pname] = cdat.ix[cond, pname] * gam[cond] / phat[cond]
     
     return cdat
 

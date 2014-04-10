@@ -162,6 +162,7 @@ if __name__ == '__main__':
     #cdat = load_dat()
     # cdat.to_pickle('cdat.pickle')
     cdat = pd.read_pickle('cdat.pickle')
+    cdat['ot'] = np.random.random_integers(1,29,cdat.shape[0])
 
     # Run main est loop
     est_loop(cdat, boot)
