@@ -32,13 +32,58 @@ def load_dat():
 
     return cdat
 
+def add_vins(cdat):
+    '''adds demographic specific vins to cdat'''
+
+    #Load vindex data 
+    vin = pd.read_pickle('vin_dat.pickle')
+
+    #Normalize
+    col = vin.columns.values
+    for k in range(1,9):
+        vin[col[k]] = vin[col[k]] / vin[col[k]].sum()
+
+    #Add demographic specific vindex
+    for k in range(1,30):
+        cdat['vin' + str(k)] = cdat.apply(lambda row: select_vin(row, vin[vin['hef_ord'] == k]), axis = 1)
+
+    return cdat
+
+def select_vin(row, vin):
+    '''selects correct vin for particular demographic'''
+    if row.loc['up40'] == 1:
+        head = 'up40'
+    else:
+        head = 'be40'
+
+    if row.loc['ne'] == 1:
+        tail = 'northeast'
+    elif row.loc['st'] == 1:
+        tail = 'south'
+    elif row.loc['wt'] == 1:
+        tail = 'west'
+    else:
+        tail = 'midwest'
+
+    return log(vin[head + tail].iat[0])
+
+def trans_expends(cdat, r):
+    '''create actual consuption before estimation'''
+
+    #Assign R's to cdat based on year
+    print(r['hef_ord'])
+    for k in range(29):
+        cdat['exp' + str(k + 1)] = cdat.apply(lambda row: r.loc[r['hef_ord'] == k + 1, str(int(row['year']))]**-1 * row['fc' + str(k + 1)], axis=1)
+
+    return cdat
+
 def make_grid(cdat):
     '''creates grid points'''
 
     #create min to max wealth on a log scale
     w = np.logspace(log(cdat.exptot.min() / float(1000), 2),
-            log(cdat.exptot.max() / float(1000), 2), 50, base=2) ** -1
-    r = np.logspace(log(0.01, 2),log(0.5, 2), 50, base=2)
+            log(cdat.exptot.max() / float(1000), 2), 40, base=2) ** -1
+    r = np.logspace(log(0.01, 2),log(0.5, 2), 40, base=2)
 
     #create all possible tuples
     tups = []
@@ -52,7 +97,7 @@ def fake_ob_types(cdat):
     """creates fake observation types"""
 
     #create random integer list
-    cdat['ot'] = np.random.random_integers(2,29,cdat.shape[0])
+    cdat['ot'] = np.random.random_integers(1,29,cdat.shape[0])
 
     return cdat
 
@@ -101,7 +146,7 @@ def est_loop(cdat, boot):
         #Get parameters
         alp, r, lw = get_pars()
 
-        alp = 0.4
+        alp = 0.1
         old_alp = 100
 
         while (old_alp - alp) ** 2 > 1e-9:
@@ -159,10 +204,9 @@ if __name__ == '__main__':
         runs = 1
 
     #Load data
-    #cdat = load_dat()
+    # cdat = load_dat()
     # cdat.to_pickle('cdat.pickle')
     cdat = pd.read_pickle('cdat.pickle')
-    cdat['ot'] = np.random.random_integers(1,29,cdat.shape[0])
 
     # Run main est loop
     est_loop(cdat, boot)

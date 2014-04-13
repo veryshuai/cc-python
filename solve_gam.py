@@ -9,14 +9,26 @@ import math
 def err(g, w, r, a):
     '''calculates the error in function'''
 
+    #exp
+    if g < 700: #avoid overflows
+        g = math.exp(g)
+    else:
+        g = 10
+    if g > 10: #avoid overflows (we never see solutions this large)
+        g = float(10)
+
     #read parameters
-    ft = (1 - r) * (1 + g / a)
-    st = (1 - a) * r / a
-    tt = (r * (1 + 1 / g)) ** (-g / a) * w ** (1 + g / a)
-    res = ft - st - tt
+    if g > 1e-6: #stop if things get very small
+        ft = (1 - r) * (1 + g / a)
+        st = (1 - a) * r / a
+        tt = (r * (1 + 1 / g)) ** (-g / a) * w ** (1 + g / a)
+        res = ft - st - tt
+    else:
+        res = 0
 
     #stop if nan encountered
     if math.isnan(res):
+        print('Warning: NaN encountered in visible parameter estimation (solve_gam, err)')
         res = 0
 
     return res
@@ -25,6 +37,16 @@ def vis_param(tup, a):
     '''solves for visible parameter ratio'''
 
     #call solve
-    sol = optimize.newton(err,1e-4,args=tup + (a,), maxiter=int(1e6))
+    try: 
+        sol = optimize.newton(err,0,args=tup + (a,), maxiter=int(1e4), tol=1e-6)
+    except Exception as e: 
+        print(e)
+        sol = -100 #return a zero
 
-    return sol
+    #routine will always return something positive, let very small numbers be zero
+    if sol > -27:
+        op = math.exp(sol)
+    else:
+        op = 0
+
+    return op

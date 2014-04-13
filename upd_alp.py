@@ -13,6 +13,10 @@ import upd_pd
 def alp_lik(alp_trans, cdat, dparams, r, lw):
     '''objective function for minimizing alp'''
 
+    #get w
+    pre_w = (cdat['exptot'] - 1000) / float(1000)
+    w = np.log(pre_w)
+
     #untransform alp
     alp = untrans(alp_trans)
 
@@ -28,7 +32,7 @@ def alp_lik(alp_trans, cdat, dparams, r, lw):
 
     #get likelihood
     vin = []
-    lik = new_ot.olik(cdat, dparams)
+    lik = new_ot.olik(cdat, dparams, w)
 
     #eliminate the really low guys
     lik = lik.apply(lambda x: max(-1e10,x))
