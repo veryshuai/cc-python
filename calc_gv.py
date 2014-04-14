@@ -47,12 +47,11 @@ def obs_pp(cdat, alp, lw):
     """replace obs type params"""
 
     # Get parameter sums
-    phat, rc = make_psums(cdat, alp, lw)
+    phat, r = make_psums(cdat, alp, lw)
 
     # Get wealth and expenditure ratios
     exptot = cdat['exptot']
     w = lw / exptot
-    r = rc / exptot
 
     # Fit spline
     gp = run_est.make_grid(cdat) #should move this to save on calculation
