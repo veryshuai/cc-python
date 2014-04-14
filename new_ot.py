@@ -43,8 +43,8 @@ def olik(cdat, dparams, w):
         t_adj = w * t[k]
         arg = logp['p' + str(k + 1)]
         addme = math.log(1 - z[k])\
-                + np.nan_to_num(stats.lognorm.logpdf(np.exp(arg), math.sqrt(sig2[k]), scale=(np.exp(-t_adj) * math.exp(mu[k]))))
-                #+ logpdf(arg, t_adj, mu[k], sig2[k])
+                + logpdf(arg, t_adj, mu[k], sig2[k])
+                #+ np.nan_to_num(stats.lognorm.logpdf(np.exp(arg), math.sqrt(sig2[k]), scale=(np.exp(-t_adj) * math.exp(mu[k]))))
 
         if k != 0: #avoid math log(0) errors
             lik = lik + addme + zeros['p' + str(k + 1)] * math.log(z[k])

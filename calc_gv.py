@@ -41,6 +41,7 @@ def make_psums(cdat, alp, lw):
         addme = (cdat['ot'] == k)\
                 * (cdat['fc' + str(int(k))]) #writes type k ev
         ev = addme.add((cdat['ot'] != k) * ev) #preserves old ev's
+    print(ev.describe())
 
     return ev
 
