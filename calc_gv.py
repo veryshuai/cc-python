@@ -39,7 +39,7 @@ def make_psums(cdat, alp, lw):
         cdat['p' + str(k)] = cdat['p' + str(k)] * (cdat['ot'] != k)
         
     #sum all preference params
-    phat = cdat.filter(regex = '^p[0-9]').sum(axis = 1) - 1
+    phat = cdat.filter(regex = '^p[0-9]').sum(axis = 1)
 
     return phat, ev
 
