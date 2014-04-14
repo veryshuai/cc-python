@@ -24,18 +24,13 @@ def alp_lik(alp_trans, cdat, dparams, r, lw):
     cdat = calc_gv.get_pp(cdat, alp, r, lw)
 
     #Update observation types
-    vin = []
     cdat = new_ot.ot_step(cdat, dparams, alp, r, lw)
 
     #update preference parameters
     cdat = calc_gv.get_pp(cdat, alp, r, lw)
 
     #get likelihood
-    vin = []
     lik = new_ot.olik(cdat, dparams, w)
-
-    #eliminate the really low guys
-    lik = lik.apply(lambda x: max(-1e10,x))
     lik_sum = -lik.sum()
 
     print(alp)
@@ -59,7 +54,7 @@ def alp_step(cdat, alp, r, lw, dparams):
 
     #Call minimize
     # result = optimize.minimize(alp_lik, [untrans(alp, True)], bounds=[(0, 1)], method = 'TNC', args = (cdat, dparams, r, lw))
-    result = optimize.minimize_scalar(alp_lik, bounds=[0, 1], method = 'bounded', args = (cdat, dparams, r, lw))
+    result = optimize.minimize_scalar(alp_lik, bounds=[0, 0.5], method = 'bounded', args = (cdat, dparams, r, lw))
     alp = untrans(result['x'])
 
     return alp, result['fun']

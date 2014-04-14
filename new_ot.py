@@ -38,12 +38,13 @@ def olik(cdat, dparams, w):
     lik = 0 
     logp = np.log(cdat.filter(regex='^p[0-9]'))
     zeros = cdat.filter(regex='^p[0-9]') == 0
-    for k in range(1, 29):
+    for k in range(29):
         #this is the likelihood!
         t_adj = w * t[k]
         arg = logp['p' + str(k + 1)]
         addme = math.log(1 - z[k])\
-                + logpdf(arg, t_adj, mu[k], sig2[k])
+                + np.nan_to_num(stats.lognorm.logpdf(np.exp(arg), math.sqrt(sig2[k]), scale=(np.exp(-t_adj) * math.exp(mu[k]))))
+                #+ logpdf(arg, t_adj, mu[k], sig2[k])
 
         if k != 0: #avoid math log(0) errors
             lik = lik + addme + zeros['p' + str(k + 1)] * math.log(z[k])
@@ -60,7 +61,6 @@ def obs_type_lik_loop(data_input):
     cdat['ot'] = ot_try # new observation type
     cdat = calc_gv.get_pp(cdat, alp, r, lw) # update parameters
     out = olik(cdat, dparams, w) + cdat['vin' + str(k + 1)] #add vindex
-
     return out
 
 def ot_step(cdat, dparams, alp, r, lw):
@@ -77,13 +77,12 @@ def ot_step(cdat, dparams, alp, r, lw):
         
     # Call multiprocessing
     #TEST
-    #mp_out = [];
-    #for k in range(29):
-    #    print(k)
-    #    base = time.time()
-    #    mp_out.append(obs_type_lik_loop(data_input[k]))
-    #    print(time.time() - base)
-    #import pdb; pdb.set_trace()
+    # mp_out = [];
+    # for k in range(29):
+    #     print(k)
+    #     base = time.time()
+    #     mp_out.append(obs_type_lik_loop(data_input[k]))
+    #     print(time.time() - base)
     pool = Pool(processes=3) # process per core
     mp_out = pool.map(obs_type_lik_loop, data_input) 
     pool.close() #proper closing

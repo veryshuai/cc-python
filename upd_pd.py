@@ -75,5 +75,4 @@ def pref_dist(cdat):
     # Calculate lognormal parameters
     mu, sig2, t = ln_probs(cdat)
     
-    # Return exp of mean, since scipy uses that
     return [z, mu, sig2, t]

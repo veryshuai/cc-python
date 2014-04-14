@@ -38,7 +38,7 @@ def vis_param(tup, a):
 
     #call solve
     try: 
-        sol = optimize.newton(err,0,args=tup + (a,), maxiter=int(1e4), tol=1e-6)
+        sol = optimize.newton(err,0,args=tup + (a,), maxiter=int(1e5), tol=1e-6)
     except Exception as e: 
         print(e)
         sol = -100 #return a zero

@@ -17,9 +17,7 @@ def load_dat():
 
     # Drop observations with very low income
     cdat = cdat[cdat['exptot'] >= 1000]
-
-    # Drop observations with no food at home expend
-    cdat = cdat[cdat['fc1'] > 0].reset_index().drop('index',1)
+    cdat = cdat.reset_index()
 
     # Initialize observation types
     cdat = fake_ob_types(cdat) 
@@ -30,7 +28,27 @@ def load_dat():
     # Add demographic specific vins
     cdat = add_vins(cdat)
 
+    # Add simple initial parameter values
+    for k in range(29):
+        cdat['p' + str(int(k + 1))] = cdat['fc' + str(int(k + 1))] * 100
+
     return cdat
+
+def get_pars():
+    """creates parameter list"""
+
+    #cons weight
+    alp = 0.1
+
+    #prices
+    r = pd.read_csv('price_dat.csv').set_index('cat_name')
+    vin = pd.read_pickle('vin_dat.pickle') #get hef order
+    r['hef_ord'] = vin.set_index(r.index)['hef_ord']
+
+    #w lower bar
+    lw = 1000
+
+    return alp, r, lw
 
 def add_vins(cdat):
     '''adds demographic specific vins to cdat'''
