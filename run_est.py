@@ -32,6 +32,22 @@ def load_dat():
 
     return cdat
 
+def get_pars():
+    """creates parameter list"""
+
+    #cons weight
+    alp = 0.1
+
+    #prices
+    r = pd.read_csv('price_dat.csv').set_index('cat_name')
+    vin = pd.read_pickle('vin_dat.pickle') #get hef order
+    r['hef_ord'] = vin.set_index(r.index)['hef_ord']
+
+    #w lower bar
+    lw = 1000
+
+    return alp, r, lw
+
 def add_vins(cdat):
     '''adds demographic specific vins to cdat'''
 
