@@ -41,7 +41,6 @@ def make_psums(cdat, alp, lw):
         addme = (cdat['ot'] == k)\
                 * (cdat['fc' + str(int(k))]) #writes type k ev
         ev = addme.add((cdat['ot'] != k) * ev) #preserves old ev's
-    print(ev.describe())
 
     return ev
 
@@ -49,13 +48,12 @@ def obs_pp(cdat, alp, lw):
     """replace obs type params"""
 
     # Get parameter sums
-    rc = make_psums(cdat, alp, lw)
+    r = make_psums(cdat, alp, lw)
     phat = 100
 
     # Get wealth and expenditure ratios
     exptot = cdat['exptot']
     w = lw / exptot
-    r = rc / exptot
 
     # Fit spline
     gp = run_est.make_grid(cdat) #should move this to save on calculation
