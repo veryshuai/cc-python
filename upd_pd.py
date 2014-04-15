@@ -5,12 +5,12 @@ import pandas as pd
 import math
 import numpy as np
 
-def bin_probs(cdat):
+def bin_probs(cdat, gn):
     '''Calculates binomial probabilities'''
 
     # Z is the zero probability
     z = []
-    for k in range(29):
+    for k in range(gn):
         pname = 'p' + str(k + 1)
         is_zero = cdat[pname] == 0
         frac = sum(is_zero) / float(len(cdat))
@@ -46,7 +46,7 @@ def get_dist_params(cdat, w, k, N, w_bar, w2_bar):
 
     return new_t, new_mu, new_sig2
 
-def ln_probs(cdat):
+def ln_probs(cdat, gn):
     '''Calculates max lik lognormal dist params'''
 
     mu, sig2, t = [], [], []
@@ -56,7 +56,7 @@ def ln_probs(cdat):
     w_bar = np.sum(w) / N
     w_bar2 = w ** 2
     w2_bar = np.sum(w_bar2) / N
-    for k in range(29):
+    for k in range(gn):
         new_t, new_mu, new_sig2 = get_dist_params(cdat, w, k,
                                            N, w_bar, w2_bar)
         t.append(new_t)
@@ -65,14 +65,14 @@ def ln_probs(cdat):
 
     return pd.Series(mu), pd.Series(sig2), pd.Series(t)
 
-def pref_dist(cdat):
+def pref_dist(cdat, gn):
     """takes a matrix of preference parameter values"""
     """returns lognormal distribution parameters"""
     
     # Calculate binomial probabilities
-    z = bin_probs(cdat)
+    z = bin_probs(cdat, gn)
 
     # Calculate lognormal parameters
-    mu, sig2, t = ln_probs(cdat)
+    mu, sig2, t = ln_probs(cdat, gn)
 
     return [z, mu, sig2, t]

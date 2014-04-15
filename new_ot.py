@@ -28,7 +28,7 @@ def log_non_zero(x):
 
     return res
 
-def olik(cdat, dparams, w):
+def olik(cdat, dparams, w, gn):
     '''calculates likelihood given observation type'''
 
     #unpack distribution parameters
@@ -38,7 +38,7 @@ def olik(cdat, dparams, w):
     lik = 0 
     logp = np.log(cdat.filter(regex='^p[0-9]'))
     zeros = cdat.filter(regex='^p[0-9]') == 0
-    for k in range(29):
+    for k in range(gn):
         #this is the likelihood!
         t_adj = w * t[k]
         arg = logp['p' + str(k + 1)]
@@ -56,14 +56,14 @@ def olik(cdat, dparams, w):
 def obs_type_lik_loop(data_input):
     '''loops through each observation type to get likelihoods'''
 
-    (k, cdat, dparams, alp, r, lw, w) = data_input
+    (k, cdat, dparams, alp, r, lw, w, gn) = data_input
     ot_try = pd.Series([k + 1] * len(cdat))
     cdat['ot'] = ot_try # new observation type
-    cdat = calc_gv.get_pp(cdat, alp, r, lw) # update parameters
-    out = olik(cdat, dparams, w) + cdat['vin' + str(k + 1)] #add vindex
+    cdat = calc_gv.get_pp(cdat, alp, r, lw, gn) # update parameters
+    out = olik(cdat, dparams, w, gn) + cdat['vin' + str(k + 1)] #add logged vindex
     return out
 
-def ot_step(cdat, dparams, alp, r, lw):
+def ot_step(cdat, dparams, alp, r, lw, gn):
     ''' updates observation types based on dist params'''
 
     #get wealth term for dividing 
@@ -72,13 +72,13 @@ def ot_step(cdat, dparams, alp, r, lw):
 
     # Create tuple arguments for multiprocessing
     data_input = []
-    for k in range(29):
-        data_input.append((k, cdat, dparams, alp, r, lw, w))
+    for k in range(gn):
+        data_input.append((k, cdat, dparams, alp, r, lw, w, gn))
         
     # Call multiprocessing
     #TEST
     # mp_out = [];
-    # for k in range(29):
+    # for k in range(gn):
     #     print(k)
     #     base = time.time()
     #     mp_out.append(obs_type_lik_loop(data_input[k]))
@@ -89,12 +89,12 @@ def ot_step(cdat, dparams, alp, r, lw):
     pool.join() #proper closing
 
     # Read results into cdat
-    for k in range(29):
+    for k in range(gn):
         cdat['lik' + str(k + 1)] = mp_out[k]
 
     #Find new observation types
     cdat_liks = cdat.filter(regex = '^lik') #only liks
-    cdat_liks.columns = range(29) #numeric column names
+    cdat_liks.columns = range(gn) #numeric column names
     cdat['ot'] = cdat_liks.idxmax(axis = 1) + 1
 
     return cdat

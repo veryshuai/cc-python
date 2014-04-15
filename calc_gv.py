@@ -12,12 +12,12 @@ import fit_spline
 import time
 from scipy.interpolate import griddata
     
-def non_obs_pp(cdat):
+def non_obs_pp(cdat, gn):
     """creates non-observation-type preference parameters"""
 
     #loop through consumption categories
     counter = 0
-    for k in range(29):
+    for k in range(gn):
         p = cdat['p' + str(int(k + 1))]
         addme = (cdat['ot'] != k + 1)\
                 * (cdat['fc' + str(int(k + 1))]) #writes type k ev
@@ -25,7 +25,7 @@ def non_obs_pp(cdat):
         newp = addme.add((cdat['ot'] == k + 1) * p) #preserves old ev's
         cdat['p' + str(int(k + 1))] = newp 
 
-    for k in range(29):
+    for k in range(gn):
         p = cdat['p' + str(int(k + 1))]
         addme = (cdat['ot'] != k + 1) * p / counter * 100 #writes type k ev
         newp = addme.add((cdat['ot'] == k + 1) * p) #preserves old ev's
@@ -33,23 +33,23 @@ def non_obs_pp(cdat):
 
     return cdat
 
-def make_psums(cdat, alp, lw):
+def make_psums(cdat, alp, lw, gn):
     """Sums quantities for use in preference param calculation"""
 
     # get expenditure on observation good
     ev = cdat['fc1'] * -1 #create arbitrary ev series
-    for k in range(1,30):
+    for k in range(1,gn + 1):
         addme = (cdat['ot'] == k)\
                 * (cdat['fc' + str(int(k))]) #writes type k ev
         ev = addme.add((cdat['ot'] != k) * ev) #preserves old ev's
 
     return ev
 
-def obs_pp(cdat, alp, lw):
+def obs_pp(cdat, alp, lw, gn):
     """replace obs type params"""
 
     # Get parameter sums
-    r = make_psums(cdat, alp, lw)
+    r = make_psums(cdat, alp, lw, gn)
     phat = 100
 
     # Get wealth ratios
@@ -69,21 +69,21 @@ def obs_pp(cdat, alp, lw):
 
     # Read into consumption data
     cdat['op'] = op
-    for i in range(29):
+    for i in range(gn):
         pname = 'p' + str(i + 1)
         addme = (cdat['ot'] == i + 1) * op 
         cdat[pname] = addme.add((cdat['ot'] != i + 1) * cdat[pname])
 
     return cdat
 
-def get_pp(cdat, alp, r, lw):
+def get_pp(cdat, alp, r, lw, gn):
     """gets preference parameters from cons data"""
 
     #replace observation type params
-    cdat = obs_pp(cdat, alp, lw)
+    cdat = obs_pp(cdat, alp, lw, gn)
 
     #create non-observation type pref params
-    cdat = non_obs_pp(cdat)
+    cdat = non_obs_pp(cdat, gn)
 
     return cdat
 
