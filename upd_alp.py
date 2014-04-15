@@ -54,7 +54,7 @@ def alp_step(cdat, alp, r, lw, dparams):
 
     #Call minimize
     # result = optimize.minimize(alp_lik, [untrans(alp, True)], bounds=[(0, 1)], method = 'TNC', args = (cdat, dparams, r, lw))
-    result = optimize.minimize_scalar(alp_lik, bounds=[0, 1], method = 'bounded', args = (cdat, dparams, r, lw))
+    result = optimize.minimize_scalar(alp_lik, bounds=[0, 0.5], method = 'bounded', args = (cdat, dparams, r, lw))
     alp = untrans(result['x'])
 
     return alp, result['fun']

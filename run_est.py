@@ -8,7 +8,6 @@ import time
 import math
 from math import log
 import itertools
-import yappi
 
 def load_dat():
     """This function reads in data and does very simple cleaning"""
@@ -99,9 +98,12 @@ def make_grid(cdat):
     '''creates grid points'''
 
     #create min to max wealth on a log scale
-    w = np.logspace(log(cdat.exptot.min() / float(1000), 2),
-            log(cdat.exptot.max() / float(1000), 2), 40, base=2) ** -1
-    r = np.logspace(log(0.01, 2),log(0.5, 2), 40, base=2)
+    #w = np.logspace(log(float(1000) / cdat.exptot.min(), 2),
+    #        log(float(1000) / cdat.exptot.max(), 2), 40, base=2)
+    #r = np.logspace(log(0.001, 2),log(0.5, 2), 40, base=2)
+    w = np.linspace(float(1000) / cdat.exptot.max(),
+            float(1000) / cdat.exptot.min(), 100)
+    r = np.linspace(0.001,0.2, 100)
 
     #create all possible tuples
     tups = []

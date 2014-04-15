@@ -68,7 +68,7 @@ def ot_step(cdat, dparams, alp, r, lw):
 
     #get wealth term for dividing 
     pre_w = (cdat['exptot'] - 1000) / float(1000)
-    w = pre_w.apply(math.log)
+    w = np.log(pre_w)
 
     # Create tuple arguments for multiprocessing
     data_input = []

@@ -10,6 +10,7 @@ from copy import deepcopy
 import run_est
 import fit_spline
 import time
+from scipy.interpolate import griddata
     
 def non_obs_pp(cdat):
     """creates non-observation-type preference parameters"""
@@ -51,18 +52,20 @@ def obs_pp(cdat, alp, lw):
     r = make_psums(cdat, alp, lw)
     phat = 100
 
-    # Get wealth and expenditure ratios
+    # Get wealth ratios
     exptot = cdat['exptot']
     w = lw / exptot
 
     # Fit spline
     gp = run_est.make_grid(cdat) #should move this to save on calculation
-    spline = fit_spline.fit(gp, alp)
+    #spline = fit_spline.fit(gp, alp)
+    w_pts, r_pts, op_pts = fit_spline.fit(gp, alp)
 
     # Get gammas
-    gam = spline.ev(w,r) 
+    #gam = spline.ev(w,r) 
+    gam = np.nan_to_num(griddata((w_pts, r_pts), op_pts, (w,r)))
     op = gam * phat
-    op[op < 0] = 0 #eliminate negative values (approximation error)
+    op[op <= 1e-10] = 1e3 #eliminate negative and exactly zero values (approximation error)
 
     # Read into consumption data
     cdat['op'] = op
