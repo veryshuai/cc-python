@@ -2,33 +2,36 @@
 
 import pandas as pd
 import numpy as np
-from calc_gv import *
+import calc_gv
 import datetime
 import time
 import math
 from math import log
 import itertools
-import yappi
+from copy import deepcopy
+import upd_pd 
+import new_ot
+import upd_alp
 
-def load_dat():
+
+def load_dat(dfile, vfile, gn):
     """This function reads in data and does very simple cleaning"""
 
-    cdat = pd.read_stata('exp_dat.dta')
+    cdat = pd.read_stata(dfile)
 
     # Drop observations with very low income
     cdat = cdat[cdat['exptot'] >= 1000]
-
-    # Drop observations with no food at home expend
-    cdat = cdat[cdat['fc1'] > 0].reset_index().drop('index',1)
+    cdat = cdat.reset_index()
 
     # Initialize observation types
-    cdat = fake_ob_types(cdat) 
-
-    # Derive actually consumption (not necessary currently)
-    # cdat = trans_expends(cdat, r)
+    cdat = fake_ob_types(cdat, gn) 
 
     # Add demographic specific vins
-    cdat = add_vins(cdat)
+    cdat = add_vins(cdat, vfile, gn)
+
+    # Add simple initial parameter values
+    for k in range(gn):
+        cdat['p' + str(int(k + 1))] = cdat['fc' + str(int(k + 1))] * 100
 
     return cdat
 
@@ -36,7 +39,7 @@ def get_pars():
     """creates parameter list"""
 
     #cons weight
-    alp = 0.1
+    alp = 0.0329
 
     #prices
     r = pd.read_csv('price_dat.csv').set_index('cat_name')
@@ -48,38 +51,42 @@ def get_pars():
 
     return alp, r, lw
 
-def add_vins(cdat):
+def add_vins(cdat, vname, gn):
     '''adds demographic specific vins to cdat'''
 
     #Load vindex data 
-    vin = pd.read_pickle('vin_dat.pickle')
+    vin = pd.read_pickle(vname)
 
     #Normalize
     col = vin.columns.values
-    for k in range(1,9):
+    for k in range(1,len(col)-1):
         vin[col[k]] = vin[col[k]] / vin[col[k]].sum()
 
     #Add demographic specific vindex
-    for k in range(1,30):
+    for k in range(1,gn + 1):
         cdat['vin' + str(k)] = cdat.apply(lambda row: select_vin(row, vin[vin['hef_ord'] == k]), axis = 1)
 
     return cdat
 
 def select_vin(row, vin):
     '''selects correct vin for particular demographic'''
-    if row.loc['up40'] == 1:
-        head = 'up40'
-    else:
-        head = 'be40'
+    try:
+        if row.loc['up40'] == 1:
+            head = 'up40'
+        else:
+            head = 'be40'
 
-    if row.loc['ne'] == 1:
-        tail = 'northeast'
-    elif row.loc['st'] == 1:
-        tail = 'south'
-    elif row.loc['wt'] == 1:
-        tail = 'west'
-    else:
-        tail = 'midwest'
+        if row.loc['ne'] == 1:
+            tail = 'northeast'
+        elif row.loc['st'] == 1:
+            tail = 'south'
+        elif row.loc['wt'] == 1:
+            tail = 'west'
+        else:
+            tail = 'midwest'
+    except:
+        head = ''
+        tail = 'vin'
 
     return log(vin[head + tail].iat[0])
 
@@ -97,9 +104,12 @@ def make_grid(cdat):
     '''creates grid points'''
 
     #create min to max wealth on a log scale
-    w = np.logspace(log(cdat.exptot.min() / float(1000), 2),
-            log(cdat.exptot.max() / float(1000), 2), 40, base=2) ** -1
-    r = np.logspace(log(0.01, 2),log(0.5, 2), 40, base=2)
+    #w = np.logspace(log(float(1000) / cdat.exptot.min(), 2),
+    #        log(float(1000) / cdat.exptot.max(), 2), 40, base=2)
+    #r = np.logspace(log(0.001, 2),log(0.5, 2), 40, base=2)
+    w = np.linspace(float(1000) / cdat.exptot.max(),
+            float(1000) / cdat.exptot.min(), 100)
+    r = np.linspace(0.001,0.2, 100)
 
     #create all possible tuples
     tups = []
@@ -109,11 +119,11 @@ def make_grid(cdat):
 
     return tups 
 
-def fake_ob_types(cdat):
+def fake_ob_types(cdat, gn):
     """creates fake observation types"""
 
     #create random integer list
-    cdat['ot'] = np.random.random_integers(1,29,cdat.shape[0])
+    cdat['ot'] = np.random.random_integers(1, gn, cdat.shape[0])
 
     return cdat
 
@@ -127,23 +137,22 @@ def trans_expends(cdat, r):
 
     return cdat
 
-def ask_boot():
-    '''user decides if we are bootstraping or not'''
+def ask(question):
+    '''user decides something'''
 
-    boot = 0
-    while boot != 'y' and boot != 'n':
-        boot = input('Is this a bootstrap run? (y/n): ')
+    ans = 0
+    while ans != 'y' and ans != 'n':
+        ans = input(question)
 
-    #change boot to a boolean
-    print(boot)
-    if boot == 'y':
-        boot_bool = True
+    #change ans to a boolean
+    if ans == 'y':
+        ans_bool = True
     else:
-        boot_bool = False
+        ans_bool = False
 
-    return boot_bool
+    return ans_bool
 
-def est_loop(cdat, boot):
+def est_loop(cdat, boot, runs, gn, prepend, dp_file, calc_t):
     '''main estimation loop'''
 
     cdat_orig = deepcopy(cdat) #for use with bootstrap
@@ -161,11 +170,12 @@ def est_loop(cdat, boot):
 
         #Get parameters
         alp, r, lw = get_pars()
+        dparams = pd.read_csv(dp_file)
 
-        alp = 0.1
+        alp = 0.0329
         old_alp = 100
 
-        while (old_alp - alp) ** 2 > 1e-9:
+        while (old_alp - alp) ** 2 > 1e-12:
 
             # Print information
             old_alp = deepcopy(alp)
@@ -173,27 +183,27 @@ def est_loop(cdat, boot):
 
             print('params')
             #Infer preference parameters
-            cdat = get_pp(cdat, alp, r, lw)
+            cdat = calc_gv.get_pp(cdat, alp, r, lw, gn)
 
             print('prefs')
             #Calculate distribution parameters
-            dparams = upd_pd.pref_dist(cdat)
+            dparams = upd_pd.pref_dist(cdat, gn, dparams, calc_t)
 
             print('ob_types')
             #Update observation types
-            cdat = new_ot.ot_step(cdat, dparams, alp, r, lw)
+            cdat = new_ot.ot_step(cdat, dparams, alp, r, lw, gn)
 
             print('params')
             #Infer preference parameters
-            cdat = get_pp(cdat, alp, r, lw)
+            cdat = calc_gv.get_pp(cdat, alp, r, lw, gn)
 
             print('prefs')
             #Calculate distribution parameters
-            dparams = upd_pd.pref_dist(cdat)
+            dparams = upd_pd.pref_dist(cdat, gn, dparams, calc_t)
 
             print('alp')
             #Update alpha and partial lik
-            alp, lik = upd_alp.alp_step(cdat, alp, r, lw, dparams)
+            alp, lik = upd_alp.alp_step(cdat, alp, r, lw, dparams, gn)
             print(alp)
             print(old_alp)
 
@@ -202,16 +212,16 @@ def est_loop(cdat, boot):
             folder = 'boot'
         else:
             folder = 'results'
-        cdat.to_csv(folder + '/cdat' + timestamp + '.csv')
-        pd.DataFrame(dparams).T.to_csv(folder + '/params' + timestamp + '.csv')
-        f = open(folder + '/alp' + timestamp + '.csv', 'w')
+        cdat.to_csv(prepend + folder + '/cdat' + timestamp + '.csv')
+        pd.DataFrame(dparams).T.to_csv(prepend + folder + '/params' + timestamp + '.csv')
+        f = open(prepend + folder + '/alp' + timestamp + '.csv', 'w')
         f.write('{:.6f}'.format(alp))
         f.close()
 
-if __name__ == '__main__':
+def do_u_boot():
+    '''gets user input for bootstrap'''
 
-
-    boot = ask_boot()
+    boot = ask('Is this a bootstrap run?: ')
 
     #How many runs?
     if boot:
@@ -219,11 +229,24 @@ if __name__ == '__main__':
     else:
         runs = 1
 
+    return boot, runs
+
+def go(dfile, pfile, vfile, gn, prepend, 
+        dp_file, calc_t):
+    '''runs estimation routine'''
+
+    #Is this a boot run?
+    boot, runs = do_u_boot()
+
     #Load data
-    # cdat = load_dat()
-    # cdat.to_pickle('cdat.pickle')
-    cdat = pd.read_pickle('cdat.pickle')
+    redo_load = ask('Shall we reload data?: ')
+    if redo_load:
+        cdat = load_dat(dfile, vfile, gn)
+        cdat.to_pickle(pfile)
+    else:
+        cdat = pd.read_pickle(pfile)
 
     # Run main est loop
-    est_loop(cdat, boot)
+    est_loop(cdat, boot, runs, gn, prepend, 
+            dp_file, calc_t)
 

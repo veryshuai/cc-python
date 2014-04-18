@@ -9,8 +9,9 @@ from scipy import stats
 import numpy as np
 import new_ot
 import upd_pd
+from copy import deepcopy
 
-def alp_lik(alp_trans, cdat, dparams, r, lw):
+def alp_lik(alp_trans, cdat, dparams, r, lw, gn):
     '''objective function for minimizing alp'''
 
     #get w
@@ -21,18 +22,16 @@ def alp_lik(alp_trans, cdat, dparams, r, lw):
     alp = untrans(alp_trans)
 
     #update preference parameters
-    cdat = calc_gv.get_pp(cdat, alp, r, lw)
+    cdat = calc_gv.get_pp(cdat, alp, r, lw, gn)
 
     #Update observation types
-    vin = []
-    cdat = new_ot.ot_step(cdat, dparams, alp, r, lw)
+    cdat = new_ot.ot_step(cdat, dparams, alp, r, lw, gn)
 
     #update preference parameters
-    cdat = calc_gv.get_pp(cdat, alp, r, lw)
+    cdat = calc_gv.get_pp(cdat, alp, r, lw, gn)
 
     #get likelihood
-    vin = []
-    lik = new_ot.olik(cdat, dparams, w)
+    lik = new_ot.olik(cdat, dparams, w, gn)
     lik_sum = -lik.sum()
 
     print(alp)
@@ -51,13 +50,20 @@ def untrans(alp_trans,forward=False):
 
     return res
 
-def alp_step(cdat, alp, r, lw, dparams):
+def alp_step(cdat, alp, r, lw, dparams, gn):
     '''calls routine for minimizing alp'''
+
+    #old alp
+    old_alp = deepcopy(alp)
 
     #Call minimize
     # result = optimize.minimize(alp_lik, [untrans(alp, True)], bounds=[(0, 1)], method = 'TNC', args = (cdat, dparams, r, lw))
-    result = optimize.minimize_scalar(alp_lik, bounds=[0, 0.5], method = 'bounded', args = (cdat, dparams, r, lw))
+    result = optimize.minimize_scalar(alp_lik, bounds=[0, 0.1], method = 'bounded', args = (cdat, dparams, r, lw, gn))
     alp = untrans(result['x'])
+    
+    #update with dampening
+    alp = old_alp + (alp - old_alp) * 0.3
+    
 
     return alp, result['fun']
     
