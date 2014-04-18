@@ -11,14 +11,15 @@ def load_dat():
     # get data
     cdat = pd.read_csv('sales_tax/data/cdat2014_04_14_18_53_57.csv')
     dparams = pd.read_csv('sales_tax/data/params2014_04_14_18_53_57.csv')
+    vindat = pd.read_pickle('sales_tax/data/vin_dat.pickle')
     pn = len(dparams)
     cn = len(cdat)
-    vis = 19
+    vis = 3 
 
     #put into a dictionary object
     dat = {'cd': cdat, 'dp': dparams, 'pn': pn, 'cn': cn, 'vis': vis}
 
-    return dat
+    return dat, vindat
 
 def get_w(dat):
     '''creates adjusted wealth w'''
@@ -66,61 +67,43 @@ def get_cons_shares(dat):
 def run_est(dat):
     '''runs estimation of the optimal tax'''
 
-    sol = scipy.optimize.minimize_scalar(eval_wel_change, bounds=(0,0.01), args=[dat], method='bounded', tol=1e-20)
+    sol = scipy.optimize.minimize_scalar(eval_wel_change, bounds=(0,1), args=[dat], method='bounded', tol=1e-20)
 
     return sol
-
-def sing_wel(row, u, dat):
-    '''returns welfare change of a single household'''
-
-    #scaling factor
-    up = 1 / float(1 - u * row['s'])
-    down = (1 - u) / float(1 - u * row['s'])
-    
-    wel_tot = 0
-    for k in range(dat['pn']):
-        if k + 1 != dat['vis']:
-            aname = 'ap' + str(k + 1)
-            addme = row[aname] * math.log(up)
-        else:
-            aname = 'ap' + str(k + 1)
-            addme = row[aname] * math.log(down)
-        wel_tot = wel_tot + addme
-        
-    return wel_tot
 
 def eval_wel_change(u,dat):
     '''returns welfare change for given tax'''
 
     rel_cols = dat['cd'].filter(regex = '^ap[0-9]')
+    rel_cols = rel_cols.div(rel_cols.sum(axis = 1), axis = 0) #normalize
     rel_cols['sum'] = rel_cols.sum(axis=1)
     rel_cols['s'] = dat['cd']['s']
 
-    #wel = rel_cols.apply(lambda row: sing_wel(row, u, dat), axis = 1)
     ft = -np.log(1 - rel_cols['s'] * float(u)) * rel_cols['sum']
     st = rel_cols['ap' + str(dat['vis'])] * math.log(1 - u)
-    wel = ft + st 
+    wel = (ft + st)
     res = sum(wel)
-
-    print(u)
-    print(res)
-
     return -res
 
 def main():
     '''entry point'''
     
     # load data
-    dat = load_dat()
+    dat, vindat = load_dat()
 
     # create adjusted gamma
     dat = create_adj_gam(dat)
 
-    # get expenditure shares on visible good
-    dat = get_cons_shares(dat)
+    for k in range(dat['pn']):
+        dat['vis'] = k + 1
 
-    # call tax estimation routine
-    fin_res = run_est(dat)
-    import pdb; pdb.set_trace() 
-    
+        # get expenditure shares on visible good
+        dat = get_cons_shares(dat)
+
+        # call tax estimation routine
+        fin_res = run_est(dat)
+
+        print(vindat[vindat['hef_ord'] == dat['vis']]
+                ['merge_id'].values)
+        print(fin_res.x)
 
