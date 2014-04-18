@@ -39,7 +39,7 @@ def get_pars():
     """creates parameter list"""
 
     #cons weight
-    alp = 0.1
+    alp = 0.0329
 
     #prices
     r = pd.read_csv('price_dat.csv').set_index('cat_name')
@@ -152,7 +152,7 @@ def ask(question):
 
     return ans_bool
 
-def est_loop(cdat, boot, runs, gn, prepend):
+def est_loop(cdat, boot, runs, gn, prepend, dp_file, calc_t):
     '''main estimation loop'''
 
     cdat_orig = deepcopy(cdat) #for use with bootstrap
@@ -170,11 +170,12 @@ def est_loop(cdat, boot, runs, gn, prepend):
 
         #Get parameters
         alp, r, lw = get_pars()
+        dparams = pd.read_csv(dp_file)
 
-        alp = 0.1
+        alp = 0.0329
         old_alp = 100
 
-        while (old_alp - alp) ** 2 > 1e-9:
+        while (old_alp - alp) ** 2 > 1e-12:
 
             # Print information
             old_alp = deepcopy(alp)
@@ -186,7 +187,7 @@ def est_loop(cdat, boot, runs, gn, prepend):
 
             print('prefs')
             #Calculate distribution parameters
-            dparams = upd_pd.pref_dist(cdat, gn)
+            dparams = upd_pd.pref_dist(cdat, gn, dparams, calc_t)
 
             print('ob_types')
             #Update observation types
@@ -198,7 +199,7 @@ def est_loop(cdat, boot, runs, gn, prepend):
 
             print('prefs')
             #Calculate distribution parameters
-            dparams = upd_pd.pref_dist(cdat, gn)
+            dparams = upd_pd.pref_dist(cdat, gn, dparams, calc_t)
 
             print('alp')
             #Update alpha and partial lik
@@ -212,8 +213,8 @@ def est_loop(cdat, boot, runs, gn, prepend):
         else:
             folder = 'results'
         cdat.to_csv(prepend + folder + '/cdat' + timestamp + '.csv')
-        pd.DataFrame(dparams).T.to_csv(folder + '/params' + timestamp + '.csv')
-        f = open(folder + '/alp' + timestamp + '.csv', 'w')
+        pd.DataFrame(dparams).T.to_csv(prepend + folder + '/params' + timestamp + '.csv')
+        f = open(prepend + folder + '/alp' + timestamp + '.csv', 'w')
         f.write('{:.6f}'.format(alp))
         f.close()
 
@@ -230,7 +231,8 @@ def do_u_boot():
 
     return boot, runs
 
-def go(dfile, pfile, vfile, gn, prepend):
+def go(dfile, pfile, vfile, gn, prepend, 
+        dp_file, calc_t):
     '''runs estimation routine'''
 
     #Is this a boot run?
@@ -245,5 +247,6 @@ def go(dfile, pfile, vfile, gn, prepend):
         cdat = pd.read_pickle(pfile)
 
     # Run main est loop
-    est_loop(cdat, boot, runs, gn, prepend)
+    est_loop(cdat, boot, runs, gn, prepend, 
+            dp_file, calc_t)
 

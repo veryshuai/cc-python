@@ -49,11 +49,11 @@ def fit(gp, alp):
         sols.append(sol)
 
     #Sanity check for weird values 
-    #pg = 0 
-    #while pg != 'y' and pg != 'n':
-    #    pg = input('plot gamma? (y/n): ')
-    #if pg == 'y':
-    #    plot_check(gp, sols)
+    # pg = 0 
+    # while pg != 'y' and pg != 'n':
+    #     pg = input('plot gamma? (y/n): ')
+    # if pg == 'y':
+    #     plot_check(gp, sols)
 
     # Remove weird values 
     x = [k[0] for k in gp]
