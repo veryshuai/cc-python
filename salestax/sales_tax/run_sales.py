@@ -132,6 +132,29 @@ def get_base_util(dat):
             ind_util(row, dat), axis = 1)
     return dat
     
+def plot_tax(grid, plt_num, tit, dat, f, axarr):
+    '''plots minimum and mean welfare gains'''
+
+    #plot 
+    pp1 = []
+    pp2 = []
+    pp3 = []
+    pp4 = []
+    ten = eval_wel_change(.2 / float(1 + 0.2), dat, True)
+    for k in grid:
+        frac = k / float(100)
+        wel = eval_wel_change(frac / float(1 + frac), dat, True)
+        pp1.append(wel.describe()['min'])
+        pp2.append(wel.describe()['mean'])
+        pp3.append(0)
+        pp4.append(ten.describe()['mean'])
+
+    # set up axes
+    axarr[plt_num % 2, plt_num % 3].plot(grid, pp1)
+    axarr[plt_num % 2, plt_num % 3].plot(grid, pp2)
+    axarr[plt_num % 2, plt_num % 3].plot(grid, pp3)
+    axarr[plt_num % 2, plt_num % 3].set_title(tit)
+
 def main():
     '''entry point'''
     
@@ -144,6 +167,8 @@ def main():
     # base utility
     dat = get_base_util(dat)
 
+    plt_num = 0
+    f, axarr = plt.subplots(2, 3)
     for k in range(dat['pn']):
         dat['vis'] = k + 1
 
@@ -156,9 +181,11 @@ def main():
         # get welfare distribution at optimum
         wel = eval_wel_change(fin_res[0], dat, True)
 
+        # print only non-zero optimal taxes
         if fin_res[0] > 1e-5:
-            print(vindat[vindat['hef_ord'] == dat['vis']]
-                ['merge_id'].values)
+            name = vindat[vindat['hef_ord']
+                         == dat['vis']]['merge_id'].values
+            print(name)
             print(fin_res[0])
             print('tax:')
             print(fin_res[0] / (1 - fin_res[0]))
@@ -172,17 +199,12 @@ def main():
             print(wel.describe()['std'])
 
             #plot gains
-            grid = np.linspace(1e-12,.9999,100)
-            pp1 = []
-            pp2 = []
-            pp3 = []
-            for k in grid:
-                wel = eval_wel_change(k, dat, True)
-                pp1.append(wel.describe()['min'])
-                pp2.append(wel.describe()['mean'])
-                pp3.append(0)
-            plt.plot(grid, pp1)
-            plt.plot(grid, pp2)
-            plt.plot(grid, pp3)
-            plt.show()
+            grid = np.linspace(1e-12,1000,100)
+            plot_tax(grid, plt_num, name, dat, f, axarr)
+            plt_num = plt_num + 1
+            
+    # Fine-tune figure; hide x ticks for top plots and y ticks for right plots
+    #     plt.setp([a.get_xticklabels() for a in axarr[0, :]], visible=False)
+    #     plt.setp([a.get_yticklabels() for a in axarr[:, 1]], visible=False)
+    plt.show()
 
