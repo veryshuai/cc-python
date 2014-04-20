@@ -61,11 +61,6 @@ def fit(gp, alp):
     df = pd.DataFrame(np.array([x,y,sols]).T)
     clean = df.groupby(0).apply(lambda row: elim_weirds(row))
 
-    # Fit spline
-    #spline = SmoothBivariateSpline(clean[0],clean[1],clean[2],kx=5,ky=5)
-    #return spline
-
-    # Fit grid
     return clean[0], clean[1], clean[2]
 
 def elim_weirds(group):
