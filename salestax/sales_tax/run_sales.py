@@ -10,8 +10,7 @@ def load_dat():
     '''imports data'''
 
     # get data
-    cdat = pd.read_csv('sales_tax/data/cdat2014_04_14_18_53_57.csv')
-    cdat = cdat[cdat['ot'] == 10]
+    cdat = pd.read_pickle('sales_tax/data/sim_dat2014_04_20_15_34_24.csv')
     dparams = pd.read_csv('sales_tax/data/params2014_04_14_18_53_57.csv')
     vindat = pd.read_pickle('sales_tax/data/vin_dat.pickle')
     pn = len(dparams)
@@ -85,8 +84,14 @@ def min_wel(u,dat):
     '''get min from eval_wel_change'''
 
     wel = eval_wel_change(u,dat,True)
+    try:
+        quant = wel.quantile(q=0.01)
+    except Exception as e:
+        print('WARNING: error in welfare quantile calculation')
+        print(e)
+        quant = -1 
     
-    return wel.quantile(q=0)
+    return quant
 
 def run_est(dat):
     '''runs estimation of the optimal tax'''
@@ -105,10 +110,17 @@ def eval_wel_change(u,dat,vec=False):
     rel_cols['s'] = dat['cd']['s']
 
     # calculate welfare
-    ft = -np.log(1 - rel_cols['s'] * float(u)) * rel_cols['sum']
-    st = rel_cols['ap' + str(dat['vis'])] * math.log(1 - float(u))
-    wel = np.log((ft + st + dat['cd']['bu']) / dat['cd']['bu'])
-    res = wel.sum()
+    try:
+        ft = -np.log(1 - rel_cols['s'] * float(u)) * rel_cols['sum']
+        st = rel_cols['ap' + str(dat['vis'])] * math.log(1 - float(u))
+        wel = np.log((ft + st + dat['cd']['bu']) / dat['cd']['bu'])
+        res = wel.sum()
+        #res = wel.quantile(q=0.5)
+    except Exception as e:
+        print(e)
+        print('WARNING: Error in welfare calculation')
+        wel = -np.inf
+        res = np.inf
     if vec:
         return wel
     else:
@@ -144,7 +156,8 @@ def plot_tax(grid, plt_num, tit, dat, f, axarr):
     for k in grid:
         frac = k / float(100)
         wel = eval_wel_change(frac / float(1 + frac), dat, True)
-        pp1.append(wel.describe()['min'])
+        #pp1.append(wel.describe()['min'])
+        pp1.append(wel.quantile(q=0.01))
         pp2.append(wel.describe()['mean'])
         pp3.append(0)
         pp4.append(ten.describe()['mean'])
@@ -182,7 +195,7 @@ def main():
         wel = eval_wel_change(fin_res[0], dat, True)
 
         # print only non-zero optimal taxes
-        if fin_res[0] > 1e-5:
+        if fin_res[0] > 1e-6:
             name = vindat[vindat['hef_ord']
                          == dat['vis']]['merge_id'].values
             print(name)

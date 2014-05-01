@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import griddata
 import time, datetime
+import pickle
 
 def main():
     '''entry point'''
@@ -18,26 +19,31 @@ def main():
     dat, vindat = load_dat()
 
     # add simulation number 
-    dat['sn'] = 1e5
+    dat['sn'] = 3e5
 
     # add wealth parameters
+    print('wealth dists')
     dat['wp'] = est_wealth_dist(dat)
 
     # simulate data
+    print('param sim')
     sim_dat = simulation(dat)
 
     # get surface
     surf = est_eq(dat)
 
     # calc simulated consumption fracs
+    print('ot sim')
     sim_dat = cons_fracs(sim_dat, surf, dat)
 
     # write the data
+    print('writing')
     timestamp = datetime.datetime\
                     .fromtimestamp(time.time())\
                     .strftime('%Y_%m_%d_%H_%M_%S')
     sim_dat['exptot'] = dat['cd']['exptot'] #need this to actual data
-    sim_dat.to_csv('results/sim_dat' + timestamp + '.csv')
+    #sim_dat.to_pickle('results/sim_dat' + timestamp + '.pickle')
+    pickle.dump(sim_dat, open('results/sim_dat' + timestamp + '.pickle', 'wb'))
 
     print('Success!')
 
