@@ -5,12 +5,13 @@ import numpy as np
 import math
 import scipy.optimize
 import matplotlib.pyplot as plt
+import pickle
 
 def load_dat():
     '''imports data'''
 
     # get data
-    cdat = pd.read_pickle('sales_tax/data/sim_dat2014_04_20_15_34_24.csv')
+    cdat = pd.read_pickle('sales_tax/data/sim_dat2014_05_02_20_58_54.pickle')
     dparams = pd.read_csv('sales_tax/data/params2014_04_14_18_53_57.csv')
     vindat = pd.read_pickle('sales_tax/data/vin_dat.pickle')
     pn = len(dparams)
@@ -67,8 +68,8 @@ def get_cons_shares(dat):
     si = dat['cd']['fc' + str(int(dat['vis']))]
     ws = dat['cd']['exptot'] * si 
 
-    #aggregate share
-    dat['cd']['s'] = ws.sum() / dat['cd']['exptot'].sum()
+    #aggregate share spent on visible good
+    dat['cd']['sv'] = ws.sum() / dat['cd']['exptot'].sum()
 
     return dat
 
@@ -80,10 +81,10 @@ def return_1_x(x, dat):
     '''returns 1 - x'''
     return 1 - x[0]
 
-def min_wel(u,dat):
+def min_wel(u, dat):
     '''get min from eval_wel_change'''
 
-    wel = eval_wel_change(u,dat,True)
+    wel = eval_wel_change(u, dat, True)
     try:
         quant = wel.quantile(q=0.01)
     except Exception as e:
@@ -96,22 +97,38 @@ def min_wel(u,dat):
 def run_est(dat):
     '''runs estimation of the optimal tax'''
 
-    #sol = scipy.optimize.minimize_scalar(eval_wel_change, bounds=(0,0.9), args=[dat], method='bounded', tol=1e-12)
-    sol = scipy.optimize.fmin_slsqp(eval_wel_change, 0.3,ieqcons=[min_wel], args=[dat], bounds=[(0,0.9999999)], iprint = 0, acc = 1e-15)
-
+    sol = scipy.optimize.minimize_scalar(eval_wel_change, bounds=(0,0.9), args=[dat], method='bounded', tol=1e-12)
+    #sol = scipy.optimize.fmin_slsqp(eval_wel_change, 0.3, ieqcons=[min_wel], args=([dat]), bounds=[(0,0.9999999)], iprint = 0, acc = 1e-15)
     return sol
+
+def get_subs(rel_cols, u):
+    '''calculates balanced budget government subsidy'''
+
+    # total wealth
+    tot_wealth = rel_cols['wealth'].sum()
+
+    #subsidy
+    num = rel_cols['sv'].iat[0] * u 
+    rel_cols['s'] = num / (tot_wealth - num)
+
+    return rel_cols
 
 def eval_wel_change(u,dat,vec=False):
     '''returns welfare change for given tax'''
 
-    #prepare data
+    #prepare data (relevant columns)
     rel_cols = dat['cd'].filter(regex = '^ap[0-9]')
     rel_cols['sum'] = rel_cols.sum(axis=1)
-    rel_cols['s'] = dat['cd']['s']
+    rel_cols['sv'] = dat['cd']['sv'] #aggregate spending on visible good
+    rel_cols['wealth'] = dat['cd']['exptot'] #aggregate spending on visible good
 
     # calculate welfare
     try:
-        ft = -np.log(1 - rel_cols['s'] * float(u)) * rel_cols['sum']
+        # get subsidy
+        rel_cols = get_subs(rel_cols, u)
+
+        # calculate welfare
+        ft = np.log(rel_cols['s']) * rel_cols['sum']
         st = rel_cols['ap' + str(dat['vis'])] * math.log(1 - float(u))
         wel = np.log((ft + st + dat['cd']['bu']) / dat['cd']['bu'])
         res = wel.sum()
@@ -172,13 +189,16 @@ def main():
     '''entry point'''
     
     # load data
-    dat, vindat = load_dat()
+    # dat, vindat = load_dat()
 
-    # create adjusted gamma
-    dat = create_adj_gam(dat)
+    # # create adjusted gamma
+    # dat = create_adj_gam(dat)
 
-    # base utility
-    dat = get_base_util(dat)
+    # # base utility
+    # dat = get_base_util(dat)
+
+    # pickle.dump(dat, open('sales_tax/data/dat.pickle','wb'))
+    dat = pickle.load(open('sales_tax/data/dat.pickle','rb'))
 
     plt_num = 0
     f, axarr = plt.subplots(2, 3)
@@ -190,6 +210,8 @@ def main():
 
         # call tax estimation routine
         fin_res = run_est(dat)
+
+        fin_res = [fin_res.x]
 
         # get welfare distribution at optimum
         wel = eval_wel_change(fin_res[0], dat, True)
@@ -215,9 +237,6 @@ def main():
             grid = np.linspace(1e-12,1000,100)
             plot_tax(grid, plt_num, name, dat, f, axarr)
             plt_num = plt_num + 1
-            
-    # Fine-tune figure; hide x ticks for top plots and y ticks for right plots
-    #     plt.setp([a.get_xticklabels() for a in axarr[0, :]], visible=False)
-    #     plt.setp([a.get_yticklabels() for a in axarr[:, 1]], visible=False)
+
     plt.show()
 

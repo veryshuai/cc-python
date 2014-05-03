@@ -19,7 +19,7 @@ def main():
     dat, vindat = load_dat()
 
     # add simulation number 
-    dat['sn'] = 3e5
+    dat['sn'] = 1e6
 
     # add wealth parameters
     print('wealth dists')
