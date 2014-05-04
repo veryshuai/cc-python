@@ -41,7 +41,7 @@ def main():
     timestamp = datetime.datetime\
                     .fromtimestamp(time.time())\
                     .strftime('%Y_%m_%d_%H_%M_%S')
-    sim_dat['exptot'] = dat['cd']['exptot'] #need this to actual data
+    sim_dat['exptot'] = sim_dat['w'] 
     #sim_dat.to_pickle('results/sim_dat' + timestamp + '.pickle')
     pickle.dump(sim_dat, open('results/sim_dat' + timestamp + '.pickle', 'wb'))
 

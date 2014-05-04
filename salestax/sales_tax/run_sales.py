@@ -11,7 +11,7 @@ def load_dat():
     '''imports data'''
 
     # get data
-    cdat = pd.read_pickle('sales_tax/data/sim_dat2014_05_02_20_58_54.pickle')
+    cdat = pd.read_pickle('sales_tax/data/sim_dat2014_05_03_12_38_51.pickle')
     dparams = pd.read_csv('sales_tax/data/params2014_04_14_18_53_57.csv')
     vindat = pd.read_pickle('sales_tax/data/vin_dat.pickle')
     pn = len(dparams)
@@ -86,34 +86,37 @@ def min_wel(u, dat):
 
     wel = eval_wel_change(u, dat, True)
     try:
-        quant = wel.quantile(q=0.01)
+        quant = wel.quantile(q=0.0005)
     except Exception as e:
         print('WARNING: error in welfare quantile calculation')
         print(e)
         quant = -1 
-    
+
     return quant
 
 def run_est(dat):
     '''runs estimation of the optimal tax'''
 
-    sol = scipy.optimize.minimize_scalar(eval_wel_change, bounds=(0,0.9), args=[dat], method='bounded', tol=1e-12)
-    #sol = scipy.optimize.fmin_slsqp(eval_wel_change, 0.3, ieqcons=[min_wel], args=([dat]), bounds=[(0,0.9999999)], iprint = 0, acc = 1e-15)
+    # Constraints
+    cons = {'type' : 'ineq', 'fun' : min_wel, 'args': [dat]}
+
+    # Solver
+    sol = scipy.optimize.minimize(eval_wel_change, 0.3, bounds=[(0,0.9999999)], args=(dat,), constraints=cons, method = 'SLSQP', tol=1e-6)
+
     return sol
 
 def get_subs(rel_cols, u):
     '''calculates balanced budget government subsidy'''
 
-    # total wealth
-    tot_wealth = rel_cols['wealth'].sum()
-
     #subsidy
-    num = rel_cols['sv'].iat[0] * u 
-    rel_cols['s'] = num / (tot_wealth - num)
+    num = rel_cols['sv'].iat[0] * u
+    s = num / float(1 - num)
+    rel_cols['s'] = s[0]
+
 
     return rel_cols
 
-def eval_wel_change(u,dat,vec=False):
+def eval_wel_change(u, dat, vec=False):
     '''returns welfare change for given tax'''
 
     #prepare data (relevant columns)
@@ -128,15 +131,14 @@ def eval_wel_change(u,dat,vec=False):
         rel_cols = get_subs(rel_cols, u)
 
         # calculate welfare
-        ft = np.log(rel_cols['s']) * rel_cols['sum']
+        ft = np.log(1 + rel_cols['s']) * rel_cols['sum']
         st = rel_cols['ap' + str(dat['vis'])] * math.log(1 - float(u))
-        wel = np.log((ft + st + dat['cd']['bu']) / dat['cd']['bu'])
+        wel = ft + st
         res = wel.sum()
-        #res = wel.quantile(q=0.5)
     except Exception as e:
         print(e)
         print('WARNING: Error in welfare calculation')
-        wel = -np.inf
+        wel = pd.Series([-np.inf])
         res = np.inf
     if vec:
         return wel
@@ -169,41 +171,55 @@ def plot_tax(grid, plt_num, tit, dat, f, axarr):
     pp2 = []
     pp3 = []
     pp4 = []
-    ten = eval_wel_change(.2 / float(1 + 0.2), dat, True)
+    ten = eval_wel_change(np.array([0.1 / float(1 + 0.1)]), dat, True)
     for k in grid:
         frac = k / float(100)
-        wel = eval_wel_change(frac / float(1 + frac), dat, True)
-        #pp1.append(wel.describe()['min'])
-        pp1.append(wel.quantile(q=0.01))
+        wel = eval_wel_change(np.array([frac / float(1 + frac)]), dat, True)
+        pp4.append(wel[dat['cd']['ot'] == 19].describe()['mean'])
+        pp3.append(wel.quantile(q=0.0005))
         pp2.append(wel.describe()['mean'])
-        pp3.append(0)
-        pp4.append(ten.describe()['mean'])
+        pp1.append(0)
+        #pp4.append(ten.describe()['mean'])
 
     # set up axes
-    axarr[plt_num % 2, plt_num % 3].plot(grid, pp1)
-    axarr[plt_num % 2, plt_num % 3].plot(grid, pp2)
-    axarr[plt_num % 2, plt_num % 3].plot(grid, pp3)
-    axarr[plt_num % 2, plt_num % 3].set_title(tit)
+    #axarr[plt_num % 2, plt_num % 3].plot(grid, pp1)
+    #axarr[plt_num % 2, plt_num % 3].plot(grid, pp2)
+    #axarr[plt_num % 2, plt_num % 3].plot(grid, pp3)
+    #axarr[plt_num % 2, plt_num % 3].set_title(tit)
+    axarr.plot(grid, pp1)
+    axarr.plot(grid, pp2)
+    axarr.plot(grid, pp3)
+    axarr.plot(grid, pp4, 'o')
+    axarr.set_title(tit)
+    import pdb; pdb.set_trace() 
 
 def main():
     '''entry point'''
     
     # load data
-    # dat, vindat = load_dat()
+    #dat, vindat = load_dat()
 
-    # # create adjusted gamma
-    # dat = create_adj_gam(dat)
+    # create adjusted gamma
+    #dat = create_adj_gam(dat)
 
-    # # base utility
-    # dat = get_base_util(dat)
+    # base utility
+    #dat = get_base_util(dat)
 
-    # pickle.dump(dat, open('sales_tax/data/dat.pickle','wb'))
+    #pickle.dump(dat, open('sales_tax/data/dat.pickle','wb'))
     dat = pickle.load(open('sales_tax/data/dat.pickle','rb'))
+    vindat = pd.read_pickle('sales_tax/data/vin_dat.pickle')
 
     plt_num = 0
-    f, axarr = plt.subplots(2, 3)
-    for k in range(dat['pn']):
+    f, axarr = plt.subplots(1, 1)
+    #for k in range(dat['pn']):
+    for k in [18]:
+
         dat['vis'] = k + 1
+        
+        # Print current category
+        name = vindat[vindat['hef_ord']
+                         == dat['vis']]['merge_id'].values
+        print(name)
 
         # get expenditure shares on visible good
         dat = get_cons_shares(dat)
@@ -211,30 +227,31 @@ def main():
         # call tax estimation routine
         fin_res = run_est(dat)
 
-        fin_res = [fin_res.x]
-
         # get welfare distribution at optimum
-        wel = eval_wel_change(fin_res[0], dat, True)
+        wel = eval_wel_change(fin_res.x, dat, True)
 
         # print only non-zero optimal taxes
-        if fin_res[0] > 1e-6:
-            name = vindat[vindat['hef_ord']
-                         == dat['vis']]['merge_id'].values
-            print(name)
-            print(fin_res[0])
+        if fin_res.x[0] > 1e-6:
+            print(fin_res.x[0])
             print('tax:')
-            print(fin_res[0] / (1 - fin_res[0]))
-            print(wel.describe()['mean'])
-            print(wel.describe()['std'])
+            print(fin_res.x[0] / (1 - fin_res.x[0]))
+            print('mean welfare')
+            print(wel.describe())
 
             #10% tax
             print('Now for the difference from 10% tax')
-            wel = eval_wel_change(0.1, dat, True)
-            print(wel.describe()['mean'])
-            print(wel.describe()['std'])
+            wel = eval_wel_change(np.array([0.1 / 1.1]), dat, True)
+            print('10% mean welfare')
+            print(wel.describe())
+
+            #180% tax
+            print('Now for the difference from 180% tax')
+            wel = eval_wel_change(np.array([1.80 / 2.80]), dat, True)
+            print('180% mean welfare')
+            print(wel.describe())
 
             #plot gains
-            grid = np.linspace(1e-12,1000,100)
+            grid = np.linspace(1e-12,100,100)
             plot_tax(grid, plt_num, name, dat, f, axarr)
             plt_num = plt_num + 1
 
