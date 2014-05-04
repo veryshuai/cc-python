@@ -60,7 +60,7 @@ def ln_probs(cdat, gn, dparams, calc_t):
     '''Calculates max lik lognormal dist params'''
 
     mu, sig2, t = [], [], []
-    pre_w = (cdat['exptot'] - 1000) / float(1000)
+    pre_w = cdat['exptot'] / float(1000)
     w = np.log(pre_w)
     N = float(len(w))
     w_bar = np.sum(w) / N

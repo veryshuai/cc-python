@@ -15,7 +15,7 @@ def alp_lik(alp_trans, cdat, dparams, r, lw, gn):
     '''objective function for minimizing alp'''
 
     #get w
-    pre_w = (cdat['exptot'] - 1000) / float(1000)
+    pre_w = cdat['exptot'] / float(1000)
     w = np.log(pre_w)
 
     #untransform alp

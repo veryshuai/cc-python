@@ -67,7 +67,7 @@ def ot_step(cdat, dparams, alp, r, lw, gn):
     ''' updates observation types based on dist params'''
 
     #get wealth term for dividing 
-    pre_w = (cdat['exptot'] - 1000) / float(1000)
+    pre_w = cdat['exptot'] / float(1000)
     w = np.log(pre_w)
 
     # Create tuple arguments for multiprocessing
